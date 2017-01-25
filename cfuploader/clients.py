@@ -223,10 +223,10 @@ class CloudFiles(object):
                                                  ssl_compression=False)
 
     def get_correct_region_endpoint(self, tok_endpoint):
-        if tok_endpoint['default_region_ep'] is not None:
-            return tok_endpoint['default_region_ep']
         if tok_endpoint['lb_region_ep'] is not None:
             return tok_endpoint['lb_region_ep']
+        if tok_endpoint['default_region_ep'] is not None:
+            return tok_endpoint['default_region_ep']
         msg = "no endpoint for ddi %d found" % tok_endpoint['domain_id']
         raise Exception(msg)
 
