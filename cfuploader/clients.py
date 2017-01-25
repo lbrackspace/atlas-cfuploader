@@ -215,19 +215,21 @@ class Auth(object):
 class CloudFiles(object):
     def __init__(self, tok_endpoint):
         self.token = tok_endpoint['token']
-        if cfg.lb_region is not None and tok_endpoint['lb_region_ep'] is not None:
-            self.end_point = tok_endpoint['lb_region_ep']
-        elif tok_endpoint['default_region_ep'] is not None:
-            self.end_point = tok_endpoint['default_region_ep']
-        else:
-            msg = "no endpoint for ddi %d found" % tok_endpoint['domain_id']
-            raise Exception(msg)
-
+        self.end_point = self.get_correct_region_endpoint(tok_endpoint)
         self.con = swiftclient.client.Connection(retries=0,
                                                  preauthurl=self.end_point,
                                                  preauthtoken=self.token,
                                                  snet=True,
                                                  ssl_compression=False)
+
+    def get_correct_region_endpoint(self, tok_endpoint):
+        if tok_endpoint['default_region_ep'] is not None:
+            return tok_endpoint['default_region_ep']
+        if tok_endpoint['lb_region_ep'] is not None:
+            return tok_endpoint['lb_region_ep']
+        msg = "no endpoint for ddi %d found" % tok_endpoint['domain_id']
+        raise Exception(msg)
+
 
     def list_containers(self):
         resp = self.con.get_account(full_listing=True)
