@@ -1,0 +1,17 @@
+{
+  "n_workers": 10,
+  "db": {
+    "passwd": "CENSORED",
+    "host": "mysql-n01.ord1.lbaas.rackspace.net",
+    "db": "CENSORED",
+    "user": "root"
+  },
+  "incoming": "/var/log/zxtm/processed",
+  "archive": "/var/log/zxtm/archive",
+  "auth_url": "https://identity.api.rackspacecloud.com",
+  "run_file": "/home/crc/cfuploader.pid",
+  "auth_user": "CENSORED",
+  "log_file": "/home/crc/cfuploader.log",
+  "auth_passwd": "CENSORED",
+  "lb_region": "ord"
+}

@@ -16,9 +16,6 @@ account_lb_query = """
 select account_id, id, name from loadbalancer
 where account_id = %s and status = 'ACTIVE'
 """
-
-cfg = utils.cfg
-
 printf = utils.printf
 
 class Auth(object):
@@ -164,6 +161,14 @@ class Auth(object):
             self.user_tokens[username] = token_id
             return token_id
 
+    def get_correct_region_endpoint(self, eps):
+        lb_region_ep = None
+        cf_eps = [e for e in eps['endpoints'] if e['type'] == 'object-store']
+        for e in cf_eps:
+            if e['region'] == self.conf.lb_region:
+                lb_region_ep = e['publicURL']
+        return lb_region_ep
+
     def get_token_and_endpoint(self, domain_id):
         with self.auth_lock:
             if domain_id in self.token_and_endpoints:
@@ -175,19 +180,10 @@ class Auth(object):
         first_user_id = domain_users['users'][0]['id']
         admin_users = self.get_admin_by_user(first_user_id)
         admin_user_name = admin_users['users'][0]['username']
-        admin_region = admin_users['users'][0]['RAX-AUTH:defaultRegion']
         token = self.impersonate_user(admin_user_name)
         eps = self.get_endpoints_by_token(token)
-        cf_eps = [e for e in eps['endpoints'] if e['type'] == 'object-store']
-
-        default_region = admin_region
-        lb_region_ep = None
-        for e in cf_eps:
-            if e['region'] == default_region:
-                default_region_ep = e['publicURL']
-            if e['region'] == self.conf.lb_region:
-                lb_region_ep = e['publicURL']
-        out = {'token': token, 'default_region_ep': default_region_ep,
+        lb_region_ep = self.get_correct_region_endpoint(eps)
+        out = {'token': token,
                'lb_region_ep': lb_region_ep,
                'domain_id': domain_id}
         with self.auth_lock:
@@ -215,21 +211,12 @@ class Auth(object):
 class CloudFiles(object):
     def __init__(self, tok_endpoint):
         self.token = tok_endpoint['token']
-        self.end_point = self.get_correct_region_endpoint(tok_endpoint)
+        self.end_point = tok_endpoint['lb_region_ep']
         self.con = swiftclient.client.Connection(retries=0,
                                                  preauthurl=self.end_point,
                                                  preauthtoken=self.token,
                                                  snet=True,
                                                  ssl_compression=False)
-
-    def get_correct_region_endpoint(self, tok_endpoint):
-        if tok_endpoint['lb_region_ep'] is not None:
-            return tok_endpoint['lb_region_ep']
-        if tok_endpoint['default_region_ep'] is not None:
-            return tok_endpoint['default_region_ep']
-        msg = "no endpoint for ddi %d found" % tok_endpoint['domain_id']
-        raise Exception(msg)
-
 
     def list_containers(self):
         resp = self.con.get_account(full_listing=True)
@@ -256,6 +243,7 @@ class CloudFiles(object):
 
     def upload_file(self, src_name, cnt_name, remote_name):
         with open(os.path.expanduser(src_name), "r") as fp:
+            utils.log("sending to endpoint %s", self.end_point)
             resp = self.con.put_object(cnt_name, remote_name, fp,
                                        chunk_size=512*1024)
         return resp
@@ -306,7 +294,7 @@ class DbHelper(object):
         return rows_out
 
 
-def create_fake_zips(account_id, n_hours):
+def create_fake_zips(cfg, account_id, n_hours):
     db = DbHelper()
     lbs = db.get_lb_ids(account_id).values()
     printf("Found %d loadbalancers in database\n", len(lbs))
@@ -317,7 +305,7 @@ def create_fake_zips(account_id, n_hours):
         for lb in lbs:
             (aid, lid, name) = lb
             printf("writing %s %s %s\n", aid, lid, name)
-            full_path = utils.set_local_file(aid, lid, dt)
+            full_path = utils.set_local_file(cfg,aid, lid, dt)
             dir_name = os.path.dirname(full_path)
             utils.mkdirs_p(dir_name)
             with zipfile.ZipFile(full_path, mode="w",
@@ -329,11 +317,11 @@ def create_fake_zips(account_id, n_hours):
                 zf.writestr('test_log.txt', data)
 
 
-def get_container_zips():
+def get_container_zips(cfg):
     db = DbHelper()
     czs = []
     lb_map = db.get_lb_map()
-    zfiles = scan_zip_files(utils.cfg.incoming)
+    zfiles = scan_zip_files(cfg.incoming)
     for zf in zfiles:
         if zf['lid'] not in lb_map:
             utils.log("lid %i not found in database skipping\n", zf['lid'])

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from cfuploader import clients
+from cfuploader import utils
 import sys
 
 if __name__ == "__main__":
@@ -9,6 +10,7 @@ if __name__ == "__main__":
         sys.stdout.write("\n")
         sys.stdout.write("creates fake zips\n")
         sys.exit()
+    cfg = utils.Config()
     aid = int(sys.argv[1])
     n_hours = int(sys.argv[2])
-    clients.create_fake_zips(aid, n_hours)
+    clients.create_fake_zips(cfg, aid, n_hours)

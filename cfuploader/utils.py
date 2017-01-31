@@ -35,7 +35,7 @@ def mkdirs_p(file_path):
             raise
 
 
-def set_local_file(aid, lid, dt):
+def set_local_file(cfg, aid, lid, dt):
     hl = datetime_to_hourlong(dt)
     tail = "access_log_%i_%i.zip" % (lid, hl)
     return os.path.join(cfg.incoming, tail)
@@ -206,6 +206,3 @@ def excuse():
     except_message = traceback.format_exc()
     stack_message  = string.join(traceback.format_exc(),sep="")
     return "Exception:\n" + except_message + "Stack Frame:\n" + stack_message
-
-
-cfg = Config()

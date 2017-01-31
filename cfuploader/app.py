@@ -20,11 +20,9 @@ l = thread.allocate_lock()
 all_files = set()
 upload_files = set()
 
-cfg = utils.cfg
-
 printf = utils.printf
 
-def thread_worker(zip_container, expected_md5, fsize, auth):
+def thread_worker(cfg, zip_container, expected_md5, fsize, auth):
     aid = zip_container['aid']
     lid = zip_container['lid']
     hl = zip_container['hl']
@@ -67,11 +65,11 @@ def thread_worker(zip_container, expected_md5, fsize, auth):
 # This is just to wrap the child thread in an exception handler
 # This way if a child throws an exception it won't bubble up and
 # kill the parent
-def upload_worker(q):
+def upload_worker(cfg, q):
     while True:
         (zip_container, expected_md5, fsize, auth) = q.get()
         try:
-            thread_worker(zip_container, expected_md5, fsize, auth)
+            thread_worker(cfg, zip_container, expected_md5, fsize, auth)
         except:
             utils.log("Exception caught sending zip file %s excuse is %s\n",
                        zip_container, utils.excuse())
@@ -80,23 +78,26 @@ def upload_worker(q):
 
 
 class Uploader(object):
-    def __init__(self):
+    def __init__(self,conf=None):
+        if conf == None:
+            self.cfg = utils.Config()
         self.q = Queue.Queue()
         self.auth = clients.Auth()
-        self.n_workers = cfg.n_workers
+        self.n_workers = self.cfg.n_workers
         # logging.basicConfig(level=logging.DEBUG)
 
     def main_loop(self):
         # spawn off self.n_worker threads
         for i in xrange(self.n_workers):
-            t = threading.Thread(target=upload_worker,args=(self.q,))
+            t = threading.Thread(target=upload_worker,args=(self.cfg,
+                                                            self.q,))
             t.setDaemon(True)
             t.start()
 
         while True:
             self.auth.clear_cache() #Lets go ahead and clear cache every batch
             # Grab all the files that are in /processed
-            zip_container_list = clients.get_container_zips()
+            zip_container_list = clients.get_container_zips(self.cfg)
             utils.log("FOUND %i zips to upload\n", len(zip_container_list))
             # Build the arguments for the ThreadPool mapper
             for zcl in zip_container_list:
