@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env pythonBugTest
 
 import os
 from setuptools import setup
