@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-Gosh darnit.
+
 import os
 from setuptools import setup
 
