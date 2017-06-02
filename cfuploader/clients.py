@@ -167,6 +167,8 @@ class Auth(object):
         for e in cf_eps:
             if e['region'] == self.conf.lb_region:
                 lb_region_ep = e['publicURL']
+        if lb_region_ep is None:
+            raise Exception("No lb region endpoint found, this must be a dead account")
         return lb_region_ep
 
     def get_token_and_endpoint(self, domain_id):
