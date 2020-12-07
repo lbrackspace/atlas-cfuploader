@@ -30,7 +30,13 @@ def thread_worker(cfg, zip_container, expected_md5, fsize, auth):
 
     local_file = zip_container['zip_path']
     cnt = zip_container['cnt']
+    cnt_ascii = cnt.decode('utf-8', 'ignore').encode('ascii', 'ignore')
+    cnt = cnt_ascii
+    zip_container['cnt'] = cnt
     remote_file = zip_container['remote_zf']
+    remote_file_ascii = remote_file.decode('utf-8', 'ignore').encode('ascii', 'ignore')
+    remote_file = remote_file_ascii
+    zip_container['remote_zf'] = remote_file
     auth.get_admin_token()
     utils.log("fetching token for anf client for %d:%d\n", aid, lid)
     try:
