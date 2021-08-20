@@ -61,31 +61,8 @@ class TestClientCloudFiles(unittest.TestCase):
                                 'cnt': 'lb_tester1_5806065_202108',
                                 })
 
-    @mock.patch('swiftclient.client.Connection.delete_object')
-    def test_delete_object(self, mock_delete_object):
-        tok_endpoint = {'token': 'token',
-                        'lb_region_ep': 'ep'}
-        container = {'obj1': {'name': 'test1'},
-                     'obj2': {'name': 'test2'}
-                     }
-        mock_delete_object.return_value = None
-        cf = CloudFiles(tok_endpoint)
-        resp = CloudFiles.x(cf, container, 'obj1')
-        self.assertIsNone(resp)
-
-    # @mock.patch('swiftclient.client.Connection.get_container')
-    # @mock.patch('swiftclient.client.Connection.delete_object')
-    # def test_empty_container(self, mock_get_container, mock_delete_object):
-    #     tok_endpoint = {'token': 'token',
-    #                     'lb_region_ep': 'ep'}
-    #
-    #     container = {'info': {'cname': 'cntr1'},
-    #                  'objs': [{'name': 'obj1'},
-    #                           {'name': 'obj2'}]}
-    #     mock_get_container.return_value = container
-    #     cf = CloudFiles(tok_endpoint)
-    #     CloudFiles.empty_container(cf, container)
-    #     self.assertTrue(mock_delete_object.called)
+    def test_empty_container(self):
+        """This Method is never used"""
 
     @mock.patch('swiftclient.client.Connection.put_container')
     def test_create_container(self, mock_put_container):
@@ -96,32 +73,5 @@ class TestClientCloudFiles(unittest.TestCase):
         CloudFiles.create_container(cf, name)
         mock_put_container.assert_called_with(name, {})
 
-    @mock.patch('swiftclient.client.Connection.put_object')
-    def test_upload_file(self, mock_put_object):
-        tok_endpoint = {'token': 'token',
-                        'lb_region_ep': 'ep'}
-        cf = CloudFiles(tok_endpoint)
-        read_data = json.dumps({'a': 1, 'b': 2, 'c': 3})
-        mock_open = mock.mock_open(read_data=read_data)
-        with mock.patch('__builtin__.open', mock_open):
-            r = clients.CloudFiles.upload_file(cf,
-                                               'lb_1_test_2021-06-16-21:00.zip',
-                                               'lb_tester1_5806065_202108',
-                                               'lb_tester1_5806065_202108'
-                                               )
-        self.assertTrue(mock_put_object.called)
-
-    # @mock.patch('swiftclient.client.Connection.put_container')
-    # @mock.patch('cfuploader.clients.CloudFiles.upload_file')
-    # def test_upload_zip(self, mock_put_container, mock_upload_file):
-    #     uploaded_file = {'cnt_name': 'lb_tester1_5806065_202108',
-    #                      'remote_name': 'rmt_name',
-    #                      'fp': 'tmp/processed/'
-    #                      }
-    #     tok_endpoint = {'token': 'token',
-    #                     'lb_region_ep': 'ep'}
-    #     cf = CloudFiles(tok_endpoint)
-    #     mock_put_container.return_value = uploaded_file
-    #     mock_upload_file.return_value = uploaded_file
-    #     resp = CloudFiles.upload_zip(cf, self.zip_container)
-    #     self.assertEqual(resp, uploaded_file)
+    def test_upload_zip(self):
+        """This method is never used"""

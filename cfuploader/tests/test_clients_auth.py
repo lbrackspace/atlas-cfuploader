@@ -76,13 +76,13 @@ class TestClientAuth(unittest.TestCase):
     def test_get_admin_token(self, mock_post, mock_json_loads):
         mock_post.return_value = {'access':
             {
-                'token': {'id': 123,
+                'token': {'id': None,
                           'expires': '"2021-08-20 20:00:00.000"'}
             }
         }
 
         resp = clients.Auth.get_admin_token(self.auth)
-        self.assertEqual(resp, {'expires': '"2021-08-20 20:00:00.000"', 'token': 123})
+        self.assertEqual(resp, {'expires': '"2021-08-20 20:00:00.000"', 'token': None})
 
     @mock.patch('requests.api.get')
     @mock.patch('json.loads')
@@ -130,8 +130,7 @@ class TestClientAuth(unittest.TestCase):
         resp = clients.Auth.impersonate_user(self.auth, 'testuser')
         self.assertEqual(resp, 123)
 
-    @mock.patch('json.loads')
-    def test_get_correct_region_endpoint(self, mock_json_loads):
+    def test_get_correct_region_endpoint(self):
         eps = {'endpoints': [{'type': 'object-store',
                               'region': 'SYD',
                               'publicURL': 'https://compute.north.public.com/v1'}]}
@@ -139,52 +138,45 @@ class TestClientAuth(unittest.TestCase):
         lb_region = clients.Auth.get_correct_region_endpoint(self.auth, eps)
         self.assertEqual(lb_region, 'https://compute.north.public.com/v1')
 
-    # @mock.patch('requests.api.get')
-    # @mock.patch('requests.api.get')
-    # @mock.patch('requests.api.post')
-    # @mock.patch('requests.api.get')
-    # @mock.patch('json.loads')
-    # def test_get_token_and_endpoint(self, mock_get_users, mock_get_admin_users,
-    #                                 mock_impersonate_user, mock_get_endpoints_by_token,
-    #                                 mock_json_loads):
-    #     mock_get_users.return_value = {'users':
-    #         [
-    #             {'id': 123,
-    #              'username': 'user1',
-    #              'RAX-AUTH:defaultRegion': 'SYD'},
-    #             {'id': 234,
-    #              'username': 'user2',
-    #              'RAX-AUTH:defaultRegion': 'DFW'}
-    #         ]
-    #     }
-    #
-    #     mock_get_admin_users.return_value = {'users':
-    #         [
-    #             {'id': 123,
-    #              'username': 'user1',
-    #              'RAX-AUTH:defaultRegion': 'SYD'},
-    #             {'id': 234,
-    #              'username': 'user2',
-    #              'RAX-AUTH:defaultRegion': 'DFW'}
-    #         ]
-    #     }
-    #
-    #     mock_impersonate_user.return_value = {'access':
-    #         {
-    #             'token': {'id': 123,
-    #                       'expires': '"2021-08-20 20:00:00.000"'}
-    #         }
-    #     }
-    #
-    #     mock_get_endpoints_by_token.return_value = {
-    #         'token': {'id': 'd74f592f986e4d6e995853ccf0123456',
-    #                   'expires': '"2021-08-20 20:00:00.000"'}}
-    #
-    #     # mock_get_correct_region_endpoint.return_value = 'https://compute.north.public.com/v1'
-    #     resp = clients.Auth.get_token_and_endpoint(self.auth, '12345')
-    #     self.assertEqual(resp, {'token': 'token',
-    #            'lb_region_ep': 'lb_region_ep',
-    #            'domain_id': 'domain_id'})
+    @mock.patch('MySQLdb.connect')
+    def test_get_lb_map(self, mock_connect):
+        rows = [{'account_id': 123,
+                 'id': 1,
+                 'name': 'abc'}]
+        mock_connect.return_value.cursor.return_value.fetchall.return_value = rows
+        resp = clients.DbHelper.get_lb_map(self.db_helper)
+        self.assertEqual({1: (123, 1, 'abc')}, resp)
+
+    @mock.patch('cfuploader.clients.DbHelper')
+    @mock.patch('cfuploader.clients.scan_zip_files')
+    @mock.patch('cfuploader.clients.utils.sort_container_zips')
+    def test_get_container_zips(self, mock_db_helper, mock_scan_zip_files,
+                                mock_sort_container_zips):
+        cf = utils.Config
+        cf.incoming = 5
+        clients.get_container_zips(cf)
+        self.assertTrue(mock_scan_zip_files.called)
+        self.assertTrue(mock_sort_container_zips.called)
+
+    @mock.patch('cfuploader.clients.os.walk')
+    def test_scan_zip_files(self, mock_os_walk):
+        clients.scan_zip_files("/test/test")
+        mock_os_walk.assert_has_calls([mock.call('/test/test')])
+
+
+class TestClientAuthCounts(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        full_path = os.path.expanduser(conf_file)
+        test_conf_file = open(full_path, "r")
+
+        with mock.patch('__builtin__.open', create=True) as mock_open:
+            mock_open.return_value.__enter__.side_effect = [test_conf_file,
+                                                            'foolog']
+            cls.conf = utils.Config(conf_file=conf_file)
+
+        cls.auth = clients.Auth(conf=cls.conf)
 
     @mock.patch('threading.Lock')
     def test_get_counts(self, mock_lock):
@@ -193,19 +185,3 @@ class TestClientAuth(unittest.TestCase):
                  "total": 0}
         response = clients.Auth.get_counts(self.auth)
         self.assertEqual(response, {'cache': 0, 'reqs': 0, 'total': 0})
-
-    # @mock.patch('cfuploader.clients.os.walk')
-    # def test_scan_zip_files(self, mock_os_walk):
-    #     clients.scan_zip_files("/test/test")
-    #     mock_os_walk.assert_has_calls([mock.call('/test/test')])
-
-    @mock.patch('MySQLdb.connect')
-    @mock.patch('MySQLdb.Connection')
-    @mock.patch('MySQLdb.cursors.DictCursor')
-    def test_get_lb_map(self, mock_connect, mock_connection, mock_cursors):
-        rows = {'account_id': 123,
-                'id': 1,
-                'name': 'abc'}
-        mock_cursors.fetchall.return_value = rows
-        resp = clients.DbHelper.get_lb_map(self.db_helper)
-        self.assertEqual(resp, {})

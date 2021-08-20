@@ -3,3 +3,5 @@
 build/*
 cfuploader.egg-info/*
 dist/*
+.env
+.idea
